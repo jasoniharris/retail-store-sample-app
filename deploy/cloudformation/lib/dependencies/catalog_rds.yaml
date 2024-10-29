@@ -20,8 +20,8 @@ Resources:
       Engine: aurora-mysql
       EngineVersion: '8.0.mysql_aurora.3.07.1'
       DBClusterIdentifier: !Sub "${EnvironmentName}-catalog"
-      MasterUsername: 'ecsuser'
-      MasterUserPassword: !Ref CatalogDBMasterPassword
+      MasterUsername: !Sub '{{resolve:secretsmanager:${CatalogDBMasterPassword}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${CatalogDBMasterPassword}::password}}'
       DBSubnetGroupName: !Ref CatalogDBSubnetGroup
       VpcSecurityGroupIds: !Ref AllowedSecurityGroupIds
       DatabaseName: catalog
@@ -59,4 +59,4 @@ Outputs:
     Value: !GetAtt CatalogDB.DBClusterArn
   CatalogDBMasterPasswordARN:
     Description: Catalog DB Master Passowrd Secret ARN
-    Value: !GetAtt CatalogDBMasterPassword.Arn
+    Value: !GetAtt CatalogDBMasterPassword.Id
