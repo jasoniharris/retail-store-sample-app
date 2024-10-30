@@ -24,7 +24,7 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
   
   #RDS
-  RDS:
+  MySQLRDS:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/catalog_rds.yaml
@@ -32,7 +32,17 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         # VpcId: !GetAtt VPC.Outputs.VpcId
         PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
-        SecurityGroups: !GetAtt SecurityGroups.Outputs.RDSSecurityGroup
+        SecurityGroups: !GetAtt SecurityGroups.Outputs.MySQLRDSSecurityGroup
+  
+  PostgresRDS:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/orders_rds.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        # VpcId: !GetAtt VPC.Outputs.VpcId
+        PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
+        SecurityGroups: !GetAtt SecurityGroups.Outputs.PostgresRDSSecurityGroup
 
   # Buckets
   # Buckets:

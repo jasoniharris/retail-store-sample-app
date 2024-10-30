@@ -37,7 +37,21 @@ Resources:
       - Key: Name
         Value: !Sub "${EnvironmentName}"
   
-  RDSSecurityGroup:
+  PostgresRDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows access to the RDS DB on port 5432
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub "${EnvironmentName}"
+  
+  MySQLRDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: Allows access to the RDS DB on port 3306
@@ -94,9 +108,13 @@ Outputs:
     Description: ElastiCache Security Group Name
     Value: !Ref ElastiCacheSecurityGroup
 
-  RDSSecurityGroup:
-    Description: RDS Security Group Name
-    Value: !Ref RDSSecurityGroup
+  MySQLRDSSecurityGroup:
+    Description: MySQL RDS Security Group Name
+    Value: !Ref MySQLRDSSecurityGroup
+  
+  PostgresRDSSecurityGroup:
+    Description: Postgres RDS Security Group Name
+    Value: !Ref PostgresRDSSecurityGroup
 
   ECSSecurityGroup:
     Description: ECS Security Group Name

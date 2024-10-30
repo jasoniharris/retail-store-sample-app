@@ -36,6 +36,7 @@ case ${STACK_CONTROL} in
   # First delete the Clouformation stack, then redeploy
   CLEAN)
     aws cloudformation delete-stack --stack-name ${STACK_NAME}
+    aws cloudformation wait stack-delete-complete --stack-name ${STACK_NAME}
     DEPLOYCF
     ;;
   # Delete the Clouformation stack

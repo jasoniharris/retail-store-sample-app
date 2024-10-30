@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Retail Store Sample App - Orders RDS
+
+Parameters:
+  EnvironmentName:
+    Type: String
+  PrivateSubnets:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+  SecurityGroups:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+
+
+# TODO - Check ECS user name needed
+Resources:
+  OrdersDB:
+    Type: AWS::RDS::DBCluster
+    Properties:
+      Engine: aurora-postgresql
+      EngineVersion: '15.5'
+      DBClusterIdentifier: !Sub "${EnvironmentName}-orders"
+      MasterUsername: !Sub '{{resolve:secretsmanager:${OrdersDBMasterPassword}::username}}'
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${OrdersDBMasterPassword}::password}}'
+      DBSubnetGroupName: !Ref OrdersDBSubnetGroup
+      VpcSecurityGroupIds: !Ref SecurityGroups
+      DatabaseName: orders
+      StorageEncrypted: true
+      DeletionProtection: false
+
+  OrdersDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      Engine: aurora-postgresql
+      DBInstanceClass: db.t3.medium
+      DBClusterIdentifier: !Ref OrdersDB
+      PubliclyAccessible: false
+
+  OrdersDBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Subnets available for the RDS DB
+      SubnetIds: !Ref PrivateSubnets
+
+  OrdersDBMasterPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Orders DB Master User
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "ordersmaster"}'
+        GenerateStringKey: password
+        PasswordLength: 10
+        ExcludeCharacters: '"@/\'
+
+
+Outputs:
+  OrdersDBEndpoint:
+    Description: Orders DB Endpoint
+    Value: !GetAtt OrdersDB.DBClusterArn
+  OrdersDBMasterPasswordARN:
+    Description: Orders DB Master Passowrd Secret ARN
+    Value: !GetAtt OrdersDBMasterPassword.Id
