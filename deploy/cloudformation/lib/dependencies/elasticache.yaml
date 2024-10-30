@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation stack for Checkout ElastiCache Redis'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the environment
+  PrivateSubnets:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+  SecurityGroups:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+
+Resources:
+  CheckoutElastiCacheRedis:
+    Type: AWS::ElastiCache::CacheCluster
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-checkout
+      Engine: redis
+      CacheNodeType: cache.t3.micro
+      NumCacheNodes: 1
+      VpcSecurityGroupIds: !Ref SecurityGroups
+      CacheSubnetGroupName: !Ref CheckoutElastiCacheSubnetGroup
+
+  CheckoutElastiCacheSubnetGroup:
+    Type: AWS::ElastiCache::SubnetGroup
+    Properties:
+      Description: Subnet group for Checkout ElastiCache Redis
+      SubnetIds: !Ref PrivateSubnets
+
+Outputs:
+  CheckoutElastiCacheEndpoint:
+    Description: Endpoint of the Checkout ElastiCache Redis cluster
+    Value: !GetAtt CheckoutElastiCacheRedis.RedisEndpoint.Address

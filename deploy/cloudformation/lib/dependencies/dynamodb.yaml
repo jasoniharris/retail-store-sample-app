@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DynamoDB table for carts application'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the environment
+
+Resources:
+  DynamoDBCartsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${EnvironmentName}-carts
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: customerId
+          AttributeType: S
+      BillingMode: PAY_PER_REQUEST
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: idx_global_customerId
+          KeySchema:
+            - AttributeName: customerId
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      Tags: 
+        - Key: environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  DynamoDBTableName:
+    Description: Name of the DynamoDB table
+    Value: !Ref DynamoDBCartsTable
+  DynamoDBTableArn:
+    Description: ARN of the DynamoDB table
+    Value: !GetAtt DynamoDBCartsTable.Arn

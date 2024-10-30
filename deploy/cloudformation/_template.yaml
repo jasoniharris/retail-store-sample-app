@@ -32,7 +32,7 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         # VpcId: !GetAtt VPC.Outputs.VpcId
         PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
-        AllowedSecurityGroupIds: !GetAtt SecurityGroups.Outputs.RDSSecurityGroup
+        SecurityGroups: !GetAtt SecurityGroups.Outputs.RDSSecurityGroup
 
   # Buckets
   # Buckets:
@@ -63,3 +63,19 @@ Resources:
       Parameters:
         EnvironmentName: !Ref EnvironmentName
         VpcId: !GetAtt VPC.Outputs.VpcId
+  
+  DynamoDB:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/dynamodb.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+  
+  ElastiCache:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/elasticache.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
+        SecurityGroups: !GetAtt SecurityGroups.Outputs.ElastiCacheSecurityGroup

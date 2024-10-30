@@ -7,7 +7,7 @@ Parameters:
   PrivateSubnets:
     Type: CommaDelimitedList 
     Description: Comma-delimited list of private subnet
-  AllowedSecurityGroupIds:
+  SecurityGroups:
     Type: CommaDelimitedList 
     Description: Comma-delimited list of private subnet
 
@@ -23,7 +23,7 @@ Resources:
       MasterUsername: !Sub '{{resolve:secretsmanager:${CatalogDBMasterPassword}::username}}'
       MasterUserPassword: !Sub '{{resolve:secretsmanager:${CatalogDBMasterPassword}::password}}'
       DBSubnetGroupName: !Ref CatalogDBSubnetGroup
-      VpcSecurityGroupIds: !Ref AllowedSecurityGroupIds
+      VpcSecurityGroupIds: !Ref SecurityGroups
       DatabaseName: catalog
       StorageEncrypted: true
       DeletionProtection: false

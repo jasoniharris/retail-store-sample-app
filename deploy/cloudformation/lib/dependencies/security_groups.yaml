@@ -9,6 +9,20 @@ Parameters:
 
 # TODO - Check ECS user name needed
 Resources:
+  ElastiCacheSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows access to the ElastiCache Redis on port 6379
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 6379
+          ToPort: 6379
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub "${EnvironmentName}"
+  
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -58,7 +72,10 @@ Resources:
         Value: !Sub "${EnvironmentName}"
 
 Outputs:
-#Security Groups
+  ElastiCacheSecurityGroup:
+    Description: ElastiCache Security Group Name
+    Value: !Ref ElastiCacheSecurityGroup
+
   RDSSecurityGroup:
     Description: RDS Security Group Name
     Value: !Ref RDSSecurityGroup
