@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudFormation stack for RabbitMQ broker'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the environment
+  PrivateSubnets:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+  SecurityGroups:
+    Type: CommaDelimitedList 
+    Description: Comma-delimited list of private subnet
+
+
+Resources:
+  MQPassword:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Description: Catalog DB Master User
+      GenerateSecretString:
+        SecretStringTemplate: '{"username": "default_mq_user"}'
+        GenerateStringKey: password
+        PasswordLength: 12
+        ExcludeCharacters: ', :='
+
+
+  MQBroker:
+    Type: AWS::AmazonMQ::Broker
+    Properties:
+      BrokerName: !Sub '${EnvironmentName}-orders-broker'
+      EngineType: RABBITMQ
+      EngineVersion: 3.13
+      HostInstanceType: mq.t3.micro
+      DeploymentMode: SINGLE_INSTANCE
+      SubnetIds: !Ref PrivateSubnets
+      SecurityGroups: !Ref SecurityGroups
+      PubliclyAccessible: false
+      Users: 
+        - Username: !Sub '{{resolve:secretsmanager:${MQPassword}::username}}'
+          Password: !Sub '{{resolve:secretsmanager:${MQPassword}::password}}'
+      Tags: 
+        - Key: Environment
+          Value: !Ref EnvironmentName
+
+Outputs:
+  BrokerEndpoint:
+    Description: MQ Broker Endpoint
+    Value: !Select [0, !GetAtt MQBroker.AmqpEndpoints]
+  BrokerArn:
+    Description: 'ARN of the MQ Broker'
+    Value: !Ref MQBroker
+  BrokerPasswordARN:
+    Description: MQ Broker Secret ARN
+    Value: !GetAtt MQPassword.Id

@@ -79,3 +79,13 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
         SecurityGroups: !GetAtt SecurityGroups.Outputs.ElastiCacheSecurityGroup
+  
+  MQ:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/mq.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        PrivateSubnets: !Select [0, !Split [",", !GetAtt VPC.Outputs.PrivateSubnets]]
+        SecurityGroups: !GetAtt SecurityGroups.Outputs.MQSecurityGroup
+
