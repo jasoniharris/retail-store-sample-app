@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploys the Retail Store Sample App
+
+Parameters:
+  ResourceBucket:
+    Type: String
+    Description: S3Bucket Bucket where the Resources are stored (cloudformation, images, lambda code)
+  ResourceBucketRelativePath:
+    Type: String
+    Description: S3Bucket Path where the Resources are stored (cloudformation, images, lambda code) (i.e. path/path2), can be empty if resources are at the root of the bucket. MUST contain trailing /
+  EnvironmentName:
+    Type: String
+    Description: Name of the environment
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+  PublicSubnetIds:
+    Type: CommaDelimitedList 
+    Description: List of public subnet IDs
+  PrivateSubnetIds:
+    Type: CommaDelimitedList 
+    Description: List of private subnet IDs
+
+Resources:
+  ALB:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/alb.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !Ref VpcId
+        PublicSubnetIds: !Join [",", !Ref PublicSubnetIds]
+
+  ECSCluster:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/ecs_cluster.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        VpcId: !Ref VpcId
+        
+  
+  AssetsService:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/ecs_service.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ServiceName: assets
+        ContainerImage: public.ecr.aws/aws-containers/retail-store-sample-assets:0.8.2
+        HealthCheckPath: /health.html
+        CloudWatchLogsGroupId: !GetAtt ECSCluster.Outputs.CloudWatchLogGroupId
+        ClusterArn: !GetAtt ECSCluster.Outputs.ClusterArn
+        ServiceDiscoveryNamespaceArn: !GetAtt ECSCluster.Outputs.ServiceDiscoveryNamespaceArn
+        SubnetIds: !Join [",", !Ref PrivateSubnetIds]
+        VpcId: !Ref VpcId

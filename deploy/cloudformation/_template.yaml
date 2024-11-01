@@ -5,32 +5,20 @@ Parameters:
   ResourceBucket:
     Type: String
     Description: S3Bucket Bucket where the Resources are stored (cloudformation, images, lambda code)
-
   ResourceBucketRelativePath:
     Type: String
     Description: S3Bucket Path where the Resources are stored (cloudformation, images, lambda code) (i.e. path/path2), can be empty if resources are at the root of the bucket. MUST contain trailing /
-  
   EnvironmentName:
     Type: String
     Description: Name of environment chosen for deployment
 
 Resources:
- #IAM
-  IAM:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/iam.yaml
-      Parameters:
-        EnvironmentName: !Ref EnvironmentName
-  
-  #RDS
   MySQLRDS:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/catalog_rds.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
-        # VpcId: !GetAtt VPC.Outputs.VpcId
         PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
         SecurityGroups: !GetAtt SecurityGroups.Outputs.MySQLRDSSecurityGroup
   
@@ -40,17 +28,8 @@ Resources:
       TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/dependencies/orders_rds.yaml
       Parameters:
         EnvironmentName: !Ref EnvironmentName
-        # VpcId: !GetAtt VPC.Outputs.VpcId
         PrivateSubnets: !GetAtt VPC.Outputs.PrivateSubnets
         SecurityGroups: !GetAtt SecurityGroups.Outputs.PostgresRDSSecurityGroup
-
-  # Buckets
-  # Buckets:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}cloudformation-templates/base/buckets.yaml
-  #     Parameters:
-  #       CleanupBucketLambdaArn: !Ref CleanupBucketLambdaArn
 
   VPC:
     Type: AWS::CloudFormation::Stack
@@ -98,4 +77,15 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         PrivateSubnets: !Select [0, !Split [",", !GetAtt VPC.Outputs.PrivateSubnets]]
         SecurityGroups: !GetAtt SecurityGroups.Outputs.MQSecurityGroup
-
+  
+  ECS:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/_template.yaml
+      Parameters:
+        ResourceBucket: !Ref ResourceBucket
+        ResourceBucketRelativePath: !Ref ResourceBucketRelativePath
+        EnvironmentName: !Ref EnvironmentName
+        PublicSubnetIds: !GetAtt VPC.Outputs.PublicSubnets
+        PrivateSubnetIds: !GetAtt VPC.Outputs.PrivateSubnets
+        VpcId: !GetAtt VPC.Outputs.VpcId

@@ -1,0 +1,43 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Cluster and Related Resources
+
+Parameters:
+  EnvironmentName:
+    Type: String
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-cluster
+
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub ${EnvironmentName}-tasks
+
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: retailstore.local
+      Description: Service discovery namespace
+      Vpc: !Ref VpcId
+
+Outputs:
+  ClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref ECSCluster
+  ClusterArn:
+    Description: The ARN of the ECS cluster
+    Value: !GetAtt ECSCluster.Arn
+  CloudWatchLogGroupId:
+    Description: The ID of the CloudWatch log group
+    Value: !Ref CloudWatchLogGroup
+  ServiceDiscoveryNamespaceId:
+    Description: The ID of the service discovery namespace
+    Value: !Ref ServiceDiscoveryNamespace
+  ServiceDiscoveryNamespaceArn:
+    Description: The ARN of the service discovery namespace
+    Value: !GetAtt ServiceDiscoveryNamespace.Arn

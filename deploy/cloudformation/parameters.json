@@ -1,7 +1,14 @@
-{
-    "Parameters": {
-      "EnvironmentName": "retail-store-ecs",
-      "ResourceBucket": "harrzjas-retail-demo-store",
-      "ResourceBucketRelativePath": "cloudformation"
-    }
-}
+[
+  {
+    "ParameterKey": "EnvironmentName",
+    "ParameterValue": "retail-store-ecs"
+  },
+  {
+    "ParameterKey": "ResourceBucket",
+    "ParameterValue": "sclerkin-retail-sample-store"
+  },
+  {
+    "ParameterKey": "ResourceBucketRelativePath",
+    "ParameterValue": "cloudformation"
+  }
+]

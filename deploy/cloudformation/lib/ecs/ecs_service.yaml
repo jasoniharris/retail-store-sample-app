@@ -1,0 +1,186 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS Service, Task Definition, IAM Roles, and Security Group
+
+Parameters:
+  EnvironmentName:
+    Type: String
+  ServiceName:
+    Type: String
+  ContainerImage:
+    Type: String
+  HealthCheckPath:
+    Type: String
+  CloudWatchLogsGroupId:
+    Type: String
+  ClusterArn:
+    Type: String
+  ServiceDiscoveryNamespaceArn:
+    Type: String
+  SubnetIds:
+    Type: CommaDelimitedList
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  AlbTargetGroupArn:
+    Type: String
+    Default: ""
+  EnvironmentVariables:
+    Type: String
+    Description: JSON-encoded list of environment variables
+    Default: ""
+  Secrets:
+    Type: String
+    Description: JSON-encoded list of secrets
+    Default: ""
+
+Resources:
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${EnvironmentName}-${ServiceName}-te
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${EnvironmentName}-${ServiceName}-task
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+
+  ECSExecPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${EnvironmentName}-${ServiceName}-exec
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - ssmmessages:CreateControlChannel
+              - ssmmessages:CreateDataChannel
+              - ssmmessages:OpenControlChannel
+              - ssmmessages:OpenDataChannel
+            Resource: '*'
+      Roles:
+        - !Ref TaskRole
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub ${EnvironmentName}-${ServiceName}
+      ContainerDefinitions:
+        - Name: application
+          Image: !Ref ContainerImage
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Name: application
+              Protocol: tcp
+          Essential: true
+          Environment: !If 
+            - HasEnvironmentVariables
+            - !Split [",", !Select [1, !Split ["[", !Select [0, !Split ["]", !Ref EnvironmentVariables]]]]]
+            - !Ref AWS::NoValue
+          Secrets: !If
+            - HasSecrets
+            - !Split [",", !Select [1, !Split ["[", !Select [0, !Split ["]", !Ref Secrets]]]]]
+            - !Ref AWS::NoValue
+          HealthCheck:
+            Command: 
+              - CMD-SHELL
+              - !Sub "curl -f http://localhost:8080${HealthCheckPath} || exit 1"
+            Interval: 10
+            StartPeriod: 60
+            Retries: 3
+            Timeout: 5
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref CloudWatchLogsGroupId
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Sub ${ServiceName}-service
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !Ref TaskExecutionRole
+      TaskRoleArn: !Ref TaskRole
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Ref ServiceName
+      Cluster: !Ref ClusterArn
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      EnableExecuteCommand: true
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+          Subnets: !Ref SubnetIds
+          AssignPublicIp: DISABLED
+      ServiceConnectConfiguration:
+        Enabled: true
+        Namespace: !Ref ServiceDiscoveryNamespaceArn
+        Services:
+          - ClientAliases:
+              - DnsName: !Ref ServiceName
+                Port: 80
+            DiscoveryName: !Ref ServiceName
+            PortName: application
+      LoadBalancers:
+        - Fn::If:
+            - HasAlbTargetGroup
+            - TargetGroupArn: !Ref AlbTargetGroupArn
+              ContainerName: application
+              ContainerPort: 8080
+            - !Ref AWS::NoValue
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${EnvironmentName}-${ServiceName}-task
+      GroupDescription: Security group for ECS service task
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+Conditions:
+  HasAlbTargetGroup: !Not [!Equals [!Ref AlbTargetGroupArn, ""]]
+  HasEnvironmentVariables: !Not [!Equals [!Ref EnvironmentVariables, ""]]
+  HasSecrets: !Not [!Equals [!Ref Secrets, ""]]
+
+Outputs:
+  TaskExecutionRoleArn:
+    Description: The ARN of the task execution role
+    Value: !GetAtt TaskExecutionRole.Arn
+  TaskRoleArn:
+    Description: The ARN of the task role
+    Value: !GetAtt TaskRole.Arn
+  ServiceName:
+    Description: The name of the ECS service
+    Value: !Ref ECSService
+  SecurityGroupId:
+    Description: The ID of the security group
+    Value: !Ref ServiceSecurityGroup
