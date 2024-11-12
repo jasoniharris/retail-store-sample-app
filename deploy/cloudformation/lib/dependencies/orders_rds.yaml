@@ -50,7 +50,7 @@ Resources:
         SecretStringTemplate: '{"username": "ordersmaster"}'
         GenerateStringKey: password
         PasswordLength: 10
-        ExcludeCharacters: '"@/\'
+        ExcludePunctuation: true
 
 
 Outputs:

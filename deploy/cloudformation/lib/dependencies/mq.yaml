@@ -22,7 +22,7 @@ Resources:
         SecretStringTemplate: '{"username": "default_mq_user"}'
         GenerateStringKey: password
         PasswordLength: 12
-        ExcludeCharacters: ', :='
+        ExcludePunctuation: true
 
 
   MQBroker:

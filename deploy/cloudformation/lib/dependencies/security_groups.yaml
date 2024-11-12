@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Retail Store Sample App - Catalog RDS
+Description: Retail Store Sample App - Security Groups
 
 Parameters:
   EnvironmentName:
@@ -73,8 +73,8 @@ Resources:
       SecurityGroupIngress:
         # Only allow inbound access to ECS from the ELB
         - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
+          FromPort: 8080
+          ToPort: 8080
           SourceSecurityGroupId: !Ref ALBSecurityGroup
       Tags:
       - Key: Name

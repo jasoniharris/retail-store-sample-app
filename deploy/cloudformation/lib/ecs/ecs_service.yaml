@@ -10,6 +10,7 @@ Parameters:
     Type: String
   HealthCheckPath:
     Type: String
+    Default: /health
   CloudWatchLogsGroupId:
     Type: String
   ClusterArn:
@@ -18,18 +19,44 @@ Parameters:
     Type: String
   SubnetIds:
     Type: CommaDelimitedList
-  VpcId:
-    Type: AWS::EC2::VPC::Id
+  ECSSecurityGroup:
+    Type: String
+    Description: The ID of a security group to assign to the ECS service
   AlbTargetGroupArn:
     Type: String
     Default: ""
-  EnvironmentVariables:
+  EnvVar1:
     Type: String
-    Description: JSON-encoded list of environment variables
-    Default: ""
-  Secrets:
+    Description: A possible environment variable to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
+    Default: ''
+  EnvVar2:
     Type: String
-    Description: JSON-encoded list of secrets
+    Description: A possible environment variable to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
+    Default: ''
+  EnvVar3:
+    Type: String
+    Description: A possible environment variable to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
+    Default: ''
+  Secret1:
+    Type: String
+    Description: A possible secret to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
+    Default: ''
+  Secret2:
+    Type: String
+    Description: A possible secret to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
+    Default: ''
+  Secret3:
+    Type: String
+    Description: A possible secret to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
+    Default: ''
+  AdditionalTaskRolePolicyArns:
+    Type: CommaDelimitedList
     Default: ""
 
 Resources:
@@ -58,6 +85,10 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      ManagedPolicyArns: !If
+        - HasAdditionalTaskPolicies
+        - !Ref AdditionalTaskRolePolicyArns
+        - !Ref AWS::NoValue
 
   ECSExecPolicy:
     Type: AWS::IAM::Policy
@@ -73,8 +104,29 @@ Resources:
               - ssmmessages:OpenControlChannel
               - ssmmessages:OpenDataChannel
             Resource: '*'
+          - !If
+            - Secret1Exist
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret1]]]]
+            - !Ref "AWS::NoValue"
+          - !If
+            - Secret2Exist
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret2]]]]
+            - !Ref "AWS::NoValue"
+          - !If
+            - Secret3Exist
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret3]]]]
+            - !Ref "AWS::NoValue"
       Roles:
-        - !Ref TaskRole
+        - !Ref TaskExecutionRole
 
   ECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -89,14 +141,44 @@ Resources:
               Name: application
               Protocol: tcp
           Essential: true
-          Environment: !If 
-            - HasEnvironmentVariables
-            - !Split [",", !Select [1, !Split ["[", !Select [0, !Split ["]", !Ref EnvironmentVariables]]]]]
-            - !Ref AWS::NoValue
-          Secrets: !If
-            - HasSecrets
-            - !Split [",", !Select [1, !Split ["[", !Select [0, !Split ["]", !Ref Secrets]]]]]
-            - !Ref AWS::NoValue
+          Environment:
+            - !If
+              - Env1Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref EnvVar1]]
+                Value: !Select [1, !Split ["|", !Ref EnvVar1]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Env2Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref EnvVar2]]
+                Value: !Select [1, !Split ["|", !Ref EnvVar2]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Env3Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref EnvVar3]]
+                Value: !Select [1, !Split ["|", !Ref EnvVar3]]
+              - !Ref "AWS::NoValue"
+          Secrets: 
+            - !If
+              - Secret1Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref Secret1]]
+                ValueFrom: !Select [1, !Split ["|", !Ref Secret1]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Secret2Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref Secret2]]
+                ValueFrom: !Select [1, !Split ["|", !Ref Secret2]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Secret3Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref Secret3]]
+                ValueFrom: !Select [1, !Split ["|", !Ref Secret3]]
+              - !Ref "AWS::NoValue"
           HealthCheck:
             Command: 
               - CMD-SHELL
@@ -131,7 +213,7 @@ Resources:
       NetworkConfiguration:
         AwsvpcConfiguration:
           SecurityGroups:
-            - !Ref ServiceSecurityGroup
+            - !Ref ECSSecurityGroup
           Subnets: !Ref SubnetIds
           AssignPublicIp: DISABLED
       ServiceConnectConfiguration:
@@ -151,25 +233,15 @@ Resources:
               ContainerPort: 8080
             - !Ref AWS::NoValue
 
-  ServiceSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupName: !Sub ${EnvironmentName}-${ServiceName}-task
-      GroupDescription: Security group for ECS service task
-      VpcId: !Ref VpcId
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: -1
-          CidrIp: 0.0.0.0/0
-
 Conditions:
   HasAlbTargetGroup: !Not [!Equals [!Ref AlbTargetGroupArn, ""]]
-  HasEnvironmentVariables: !Not [!Equals [!Ref EnvironmentVariables, ""]]
-  HasSecrets: !Not [!Equals [!Ref Secrets, ""]]
+  Env1Exist: !Not [ !Equals [!Ref EnvVar1, '']]
+  Env2Exist: !Not [ !Equals [!Ref EnvVar2, '']]
+  Env3Exist: !Not [ !Equals [!Ref EnvVar3, '']]
+  Secret1Exist: !Not [ !Equals [!Ref Secret1, '']]
+  Secret2Exist: !Not [ !Equals [!Ref Secret2, '']]
+  Secret3Exist: !Not [ !Equals [!Ref Secret3, '']]
+  HasAdditionalTaskPolicies: !Not [!Equals [!Join ['', !Ref AdditionalTaskRolePolicyArns], '']]
 
 Outputs:
   TaskExecutionRoleArn:
@@ -181,6 +253,3 @@ Outputs:
   ServiceName:
     Description: The name of the ECS service
     Value: !Ref ECSService
-  SecurityGroupId:
-    Description: The ID of the security group
-    Value: !Ref ServiceSecurityGroup

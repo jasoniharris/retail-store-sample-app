@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'DynamoDB table for carts application'
+Description: 'DynamoDB table for cart application'
 
 Parameters:
   EnvironmentName:
@@ -7,10 +7,10 @@ Parameters:
     Description: Name of the environment
 
 Resources:
-  DynamoDBCartsTable:
+  CartDynamoDBTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${EnvironmentName}-carts
+      TableName: !Sub ${EnvironmentName}-cart
       AttributeDefinitions:
         - AttributeName: id
           AttributeType: S
@@ -30,11 +30,28 @@ Resources:
       Tags: 
         - Key: environment
           Value: !Ref EnvironmentName
+  
+  CartDynamoPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      ManagedPolicyName: !Sub ${EnvironmentName}-cart-dynamo
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllAPIActionsOnCart
+            Effect: Allow
+            Action: dynamodb:*
+            Resource:
+              - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CartDynamoDBTable}
+              - !Sub arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${CartDynamoDBTable}/*
 
 Outputs:
-  DynamoDBTableName:
+  CartDynamoTableName:
     Description: Name of the DynamoDB table
-    Value: !Ref DynamoDBCartsTable
-  DynamoDBTableArn:
+    Value: !Ref CartDynamoDBTable
+  CartDynamoDBTableArn:
     Description: ARN of the DynamoDB table
-    Value: !GetAtt DynamoDBCartsTable.Arn
+    Value: !GetAtt CartDynamoDBTable.Arn
+  CartDynamoPolicyArn:
+    Description: ARN of the Cart Dynamo Policy
+    Value: !Ref CartDynamoPolicy

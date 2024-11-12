@@ -89,3 +89,8 @@ Resources:
         PublicSubnetIds: !GetAtt VPC.Outputs.PublicSubnets
         PrivateSubnetIds: !GetAtt VPC.Outputs.PrivateSubnets
         VpcId: !GetAtt VPC.Outputs.VpcId
+        ECSSecurityGroup: !GetAtt SecurityGroups.Outputs.ECSSecurityGroup
+        CartDynamoDbTableName: !GetAtt DynamoDB.Outputs.CartDynamoTableName
+        CartDynamoDbPolicyArn: !GetAtt DynamoDB.Outputs.CartDynamoPolicyArn
+        CatalogDBEndpoint: !GetAtt MySQLRDS.Outputs.CatalogDBEndpoint
+        CatalogDBMasterPasswordARN: !GetAtt MySQLRDS.Outputs.CatalogDBMasterPasswordARN
