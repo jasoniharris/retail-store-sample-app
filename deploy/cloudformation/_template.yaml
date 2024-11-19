@@ -90,7 +90,18 @@ Resources:
         PrivateSubnetIds: !GetAtt VPC.Outputs.PrivateSubnets
         VpcId: !GetAtt VPC.Outputs.VpcId
         ECSSecurityGroup: !GetAtt SecurityGroups.Outputs.ECSSecurityGroup
+        ALBSecurityGroup: !GetAtt SecurityGroups.Outputs.ALBSecurityGroup
         CartDynamoDbTableName: !GetAtt DynamoDB.Outputs.CartDynamoTableName
         CartDynamoDbPolicyArn: !GetAtt DynamoDB.Outputs.CartDynamoPolicyArn
         CatalogDBEndpoint: !GetAtt MySQLRDS.Outputs.CatalogDBEndpoint
         CatalogDBMasterPasswordARN: !GetAtt MySQLRDS.Outputs.CatalogDBMasterPasswordARN
+        OrdersDBEndpoint: !GetAtt PostgresRDS.Outputs.OrdersDBEndpoint
+        OrdersDBMasterPasswordARN: !GetAtt PostgresRDS.Outputs.OrdersDBMasterPasswordARN
+        OrdersMQEndpoint: !GetAtt MQ.Outputs.BrokerEndpoint
+        OrdersMQMPasswordARN: !GetAtt MQ.Outputs.BrokerPasswordARN
+        CheckoutElastiCacheEndpoint: !GetAtt ElastiCache.Outputs.CheckoutElastiCacheEndpoint
+
+Outputs:
+  LoadBalancerDNS:
+    Description: DNS name of the load balancer
+    Value: !GetAtt ECS.Outputs.LoadBalancerDNS

@@ -31,7 +31,7 @@ Resources:
       BrokerName: !Sub '${EnvironmentName}-orders-broker'
       EngineType: RABBITMQ
       EngineVersion: 3.13
-      HostInstanceType: mq.t3.micro
+      HostInstanceType: mq.m5.large
       DeploymentMode: SINGLE_INSTANCE
       SubnetIds: !Ref PrivateSubnets
       SecurityGroups: !Ref SecurityGroups

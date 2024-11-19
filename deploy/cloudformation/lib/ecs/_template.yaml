@@ -23,6 +23,9 @@ Parameters:
   ECSSecurityGroup:
     Type: String
     Description: The ID of the security group to assign to ECS services
+  ALBSecurityGroup:
+    Type: String
+    Description: The ID of the security group to assign to the ALB
   CartDynamoDbTableName:
     Type: String
     Description: Name of the Cart DynamoDB table
@@ -35,6 +38,21 @@ Parameters:
   CatalogDBMasterPasswordARN:
     Type: String
     Description: Arn of the Catalog DB password
+  OrdersDBEndpoint:
+    Type: String
+    Description: The endpoint of the Orders DB
+  OrdersDBMasterPasswordARN:
+    Type: String
+    Description: Arn of the Catalog DB password
+  OrdersMQEndpoint:
+    Type: String
+    Description: The endpoint of the Orders MQ
+  OrdersMQMPasswordARN:
+    Type: String
+    Description: Arn of the Catalog MQ password
+  CheckoutElastiCacheEndpoint:
+    Type: String
+    Description: Endpoint for the Checkout Redis ElastiCache
 
 Resources:
   ALB:
@@ -45,6 +63,7 @@ Resources:
         EnvironmentName: !Ref EnvironmentName
         VpcId: !Ref VpcId
         PublicSubnetIds: !Join [",", !Ref PublicSubnetIds]
+        SecurityGroups: !Ref ALBSecurityGroup
 
   ECSCluster:
     Type: AWS::CloudFormation::Stack
@@ -100,8 +119,71 @@ Resources:
         ServiceDiscoveryNamespaceArn: !GetAtt ECSCluster.Outputs.ServiceDiscoveryNamespaceArn
         SubnetIds: !Join [",", !Ref PrivateSubnetIds]
         ECSSecurityGroup: !Ref ECSSecurityGroup
-        AdditionalTaskRolePolicyArns: !Ref CartDynamoDbPolicyArn
         EnvVar1: DB_NAME|catalog
         EnvVar2: !Sub "DB_ENDPOINT|${CatalogDBEndpoint}"
         Secret1: !Sub "DB_USER|${CatalogDBMasterPasswordARN}:username::"
         Secret2: !Sub "DB_PASSWORD|${CatalogDBMasterPasswordARN}:password::"
+  
+  OrdersService:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/ecs_service.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ServiceName: orders
+        ContainerImage: public.ecr.aws/aws-containers/retail-store-sample-orders:0.8.2
+        HealthCheckPath: /actuator/health
+        CloudWatchLogsGroupId: !GetAtt ECSCluster.Outputs.CloudWatchLogGroupId
+        ClusterArn: !GetAtt ECSCluster.Outputs.ClusterArn
+        ServiceDiscoveryNamespaceArn: !GetAtt ECSCluster.Outputs.ServiceDiscoveryNamespaceArn
+        SubnetIds: !Join [",", !Ref PrivateSubnetIds]
+        ECSSecurityGroup: !Ref ECSSecurityGroup
+        EnvVar1: RETAIL_ORDERS_MESSAGING_PROVIDER|rabbitmq
+        EnvVar2: !Sub "SPRING_DATASOURCE_URL|jdbc:postgresql://${OrdersDBEndpoint}:5432/orders"
+        EnvVar3: !Sub "SPRING_RABBITMQ_ADDRESSES|${OrdersMQEndpoint}"
+        Secret1: !Sub "SPRING_DATASOURCE_USERNAME|${OrdersDBMasterPasswordARN}:username::"
+        Secret2: !Sub "SPRING_DATASOURCE_PASSWORD|${OrdersDBMasterPasswordARN}:password::"
+        Secret3: !Sub "SPRING_RABBITMQ_USERNAME|${OrdersMQMPasswordARN}:username::"
+        Secret4: !Sub "SPRING_RABBITMQ_PASSWORD|${OrdersMQMPasswordARN}:password::"
+  
+  CheckoutService:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/ecs_service.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ServiceName: checkout
+        ContainerImage: public.ecr.aws/aws-containers/retail-store-sample-checkout:0.8.2
+        CloudWatchLogsGroupId: !GetAtt ECSCluster.Outputs.CloudWatchLogGroupId
+        ClusterArn: !GetAtt ECSCluster.Outputs.ClusterArn
+        ServiceDiscoveryNamespaceArn: !GetAtt ECSCluster.Outputs.ServiceDiscoveryNamespaceArn
+        SubnetIds: !Join [",", !Ref PrivateSubnetIds]
+        ECSSecurityGroup: !Ref ECSSecurityGroup
+        EnvVar1: !Sub "REDIS_URL|redis://${CheckoutElastiCacheEndpoint}:6379"
+        EnvVar2: ENDPOINTS_ORDERS|http://orders
+  
+  UI:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub https://s3.amazonaws.com/${ResourceBucket}/${ResourceBucketRelativePath}/lib/ecs/ecs_service.yaml
+      Parameters:
+        EnvironmentName: !Ref EnvironmentName
+        ServiceName: ui
+        ContainerImage: public.ecr.aws/aws-containers/retail-store-sample-ui:0.8.2
+        HealthCheckPath: /actuator/health
+        CloudWatchLogsGroupId: !GetAtt ECSCluster.Outputs.CloudWatchLogGroupId
+        ClusterArn: !GetAtt ECSCluster.Outputs.ClusterArn
+        ServiceDiscoveryNamespaceArn: !GetAtt ECSCluster.Outputs.ServiceDiscoveryNamespaceArn
+        SubnetIds: !Join [",", !Ref PrivateSubnetIds]
+        ECSSecurityGroup: !Ref ECSSecurityGroup
+        AlbTargetGroupArn: !GetAtt ALB.Outputs.TargetGroupARN
+        EnvVar1: ENDPOINTS_CATALOG|http://catalog
+        EnvVar2: ENDPOINTS_CARTS|http://cart
+        EnvVar3: ENDPOINTS_CHECKOUT|http://checkout
+        EnvVar4: ENDPOINTS_ORDERS|http://orders
+        EnvVar5: ENDPOINTS_ASSETS|http://assets
+
+Outputs:
+  LoadBalancerDNS:
+    Description: DNS name of the load balancer
+    Value: !GetAtt ALB.Outputs.LoadBalancerDNS

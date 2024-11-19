@@ -40,6 +40,16 @@ Parameters:
     Description: A possible environment variable to be passed on to the container definition.
       Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
     Default: ''
+  EnvVar4:
+    Type: String
+    Description: A possible environment variable to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
+    Default: ''
+  EnvVar5:
+    Type: String
+    Description: A possible environment variable to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:envval'
+    Default: ''
   Secret1:
     Type: String
     Description: A possible secret to be passed on to the container definition.
@@ -51,6 +61,16 @@ Parameters:
       Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
     Default: ''
   Secret3:
+    Type: String
+    Description: A possible secret to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
+    Default: ''
+  Secret4:
+    Type: String
+    Description: A possible secret to be passed on to the container definition.
+      Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
+    Default: ''
+  Secret5:
     Type: String
     Description: A possible secret to be passed on to the container definition.
       Should be a key-value pair combined with a ':'. E.g. 'envkey:<secret-arn>'
@@ -125,6 +145,20 @@ Resources:
                 - secretsmanager:GetSecretValue
               Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret3]]]]
             - !Ref "AWS::NoValue"
+          - !If
+            - Secret4Exist
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret4]]]]
+            - !Ref "AWS::NoValue"
+          - !If
+            - Secret5Exist
+            - Effect: Allow
+              Action:
+                - secretsmanager:GetSecretValue
+              Resource: !Join [':', [!Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret", !Select [6, !Split [":", !Ref Secret5]]]]
+            - !Ref "AWS::NoValue"
       Roles:
         - !Ref TaskExecutionRole
 
@@ -160,6 +194,18 @@ Resources:
                 Name: !Select [0, !Split ["|", !Ref EnvVar3]]
                 Value: !Select [1, !Split ["|", !Ref EnvVar3]]
               - !Ref "AWS::NoValue"
+            - !If
+              - Env4Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref EnvVar4]]
+                Value: !Select [1, !Split ["|", !Ref EnvVar4]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Env5Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref EnvVar5]]
+                Value: !Select [1, !Split ["|", !Ref EnvVar5]]
+              - !Ref "AWS::NoValue"
           Secrets: 
             - !If
               - Secret1Exist
@@ -178,6 +224,18 @@ Resources:
               -
                 Name: !Select [0, !Split ["|", !Ref Secret3]]
                 ValueFrom: !Select [1, !Split ["|", !Ref Secret3]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Secret4Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref Secret4]]
+                ValueFrom: !Select [1, !Split ["|", !Ref Secret4]]
+              - !Ref "AWS::NoValue"
+            - !If
+              - Secret5Exist
+              -
+                Name: !Select [0, !Split ["|", !Ref Secret5]]
+                ValueFrom: !Select [1, !Split ["|", !Ref Secret5]]
               - !Ref "AWS::NoValue"
           HealthCheck:
             Command: 
@@ -238,9 +296,13 @@ Conditions:
   Env1Exist: !Not [ !Equals [!Ref EnvVar1, '']]
   Env2Exist: !Not [ !Equals [!Ref EnvVar2, '']]
   Env3Exist: !Not [ !Equals [!Ref EnvVar3, '']]
+  Env4Exist: !Not [ !Equals [!Ref EnvVar4, '']]
+  Env5Exist: !Not [ !Equals [!Ref EnvVar5, '']]
   Secret1Exist: !Not [ !Equals [!Ref Secret1, '']]
   Secret2Exist: !Not [ !Equals [!Ref Secret2, '']]
   Secret3Exist: !Not [ !Equals [!Ref Secret3, '']]
+  Secret4Exist: !Not [ !Equals [!Ref Secret4, '']]
+  Secret5Exist: !Not [ !Equals [!Ref Secret5, '']]
   HasAdditionalTaskPolicies: !Not [!Equals [!Join ['', !Ref AdditionalTaskRolePolicyArns], '']]
 
 Outputs:

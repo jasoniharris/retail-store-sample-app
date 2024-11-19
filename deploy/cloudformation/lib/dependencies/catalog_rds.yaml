@@ -27,6 +27,7 @@ Resources:
       DatabaseName: catalog
       StorageEncrypted: true
       DeletionProtection: false
+      Port: 3306
 
   CatalogDBInstance:
     Type: AWS::RDS::DBInstance

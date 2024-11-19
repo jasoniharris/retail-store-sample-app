@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 # Staging script for copying deployment resources to an S3 bucket. The resources
 # copied here are used as part of the deployment process for this project.
@@ -17,16 +17,14 @@ DEPLOYCF () {
     cfn-lint deploy/cloudformation/**/*.yaml 
     aws s3 cp deploy/cloudformation/ s3://${BUCKET}/${S3PATH}/ --recursive 
     aws cloudformation deploy --template-file deploy/cloudformation/_template.yaml  --stack-name ${STACK_NAME} --parameter-overrides file://deploy/cloudformation/parameters.json --capabilities CAPABILITY_NAMED_IAM --tags Purpose=Promo-Pandemonium-GameDay
-
+    echo -n "ALB DNS: http://"
+    aws cloudformation describe-stacks --stack-name ${STACK_NAME} --query 'Stacks[0].Outputs[?OutputKey==`LoadBalancerDNS`].OutputValue' --output text --no-cli-pager
 }
 
-
-
 case ${STACK_CONTROL} in
-
   # Deploy the main stack
   DEPLOY)
-    DEPLOYCF
+    DEPLOYCF 
     ;;
   # Check your Cloudformation templates for errors
   LINT)

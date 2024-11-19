@@ -21,7 +21,7 @@ Resources:
           SourceSecurityGroupId: !Ref ECSSecurityGroup
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-mq"
 
   ElastiCacheSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -35,7 +35,7 @@ Resources:
           SourceSecurityGroupId: !Ref ECSSecurityGroup
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-redis"
   
   PostgresRDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -49,7 +49,7 @@ Resources:
           SourceSecurityGroupId: !Ref ECSSecurityGroup
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-postgres"
   
   MySQLRDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -63,22 +63,35 @@ Resources:
           SourceSecurityGroupId: !Ref ECSSecurityGroup
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-mysql"
 
+  # The ECS services need a self referencing rule for inter-service comms
   ECSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
       VpcId: !Ref VpcId
-      GroupDescription: Control access to RDS
-      SecurityGroupIngress:
-        # Only allow inbound access to ECS from the ELB
-        - IpProtocol: tcp
-          FromPort: 8080
-          ToPort: 8080
-          SourceSecurityGroupId: !Ref ALBSecurityGroup
+      GroupDescription: Control access to ECS services
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-ecs"
+  
+  ECSSecurityGroupRuleSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ECSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      SourceSecurityGroupId: !Ref ECSSecurityGroup
+
+  ECSSecurityGroupRuleALB:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ECSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      SourceSecurityGroupId: !Ref ALBSecurityGroup
 
   ALBSecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -97,7 +110,7 @@ Resources:
           CidrIp: 0.0.0.0/0
       Tags:
       - Key: Name
-        Value: !Sub "${EnvironmentName}"
+        Value: !Sub "${EnvironmentName}-alb"
 
 Outputs:
   MQSecurityGroup:
